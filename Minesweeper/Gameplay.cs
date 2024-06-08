@@ -11,83 +11,143 @@ using System.Windows.Forms;
 
 namespace Minesweeper
 {  
-    //PPM robić flagę
-
     public partial class Gameplay : Form, IGameplay
     {
         private const int _buttonWidth = 50;
         private const int _buttonHeight = 50;
         private const int _padding = 0;
 
+        private int[,] _board;
+        private int _rows;
+        private int _cols;
+        private Button[,] _buttonArray;
+        private int _revealedCells;
+        private int _numberOfBombs;
+
+        //Positions of the eight possible neighbors
+        private int[] _dx = { -1, -1, -1, 0, 0, 1, 1, 1 };
+        private int[] _dy = { -1, 0, 1, -1, 1, -1, 0, 1 };
+
         public Gameplay()
         {
-            int[,] board = CreateBoard(8, 10);
-            SetBombs(board, 10);
-            SetNumbers(board);
-
             InitializeComponent();
-
-            CreateButtonArray(board);
-            //ShowBoard(board);
+            InitializeGame();
         }
 
-        public int[,] CreateBoard(int x, int y)
+        private void InitializeGame()
         {
-            int[,] board = new int[x, y];
-
-            return board;
+            InitializeBoard(8, 10);
+            PlaceBombs(_board, 10);
+            CalculateAdjacentBombs(_board);
+            CreateButtonArray(_board, _buttonArray);
+            //DisplayBoard(_board, _buttonArray);
+            _revealedCells = 0;
         }
 
-        public void CreateButtonArray(int[,] board)
+        public void InitializeBoard(int x, int y)
         {
-            var buttonArray = new Button[board.GetLength(0), board.GetLength(1)];
+            _rows = x;
+            _cols = y;
 
-            for (int i = 0; i < board.GetLength(0); i++)
+            _board = new int[_rows, _cols];
+            _buttonArray = new Button[_rows, _cols];
+        }
+
+        public void CreateButtonArray(int[,] board, Button[,] buttonArray)
+        {
+            for (int i = 0; i < _rows; i++)
             {
-                for (int j = 0; j < board.GetLength(1); j++)
+                for (int j = 0; j < _cols; j++)
                 {
                     Button button = new Button
                     {
                         Width = _buttonWidth,
                         Height = _buttonHeight,
-                        Text = $"{board[i, j]}",
-                        Tag = board[i, j],
+                        //Text = $"{board[i, j]}",
+                        Tag = (i, j),
                         Location = new System.Drawing.Point(j * (_buttonWidth + _padding), i * (_buttonHeight + _padding))
                     };
 
-                    button.Click += new EventHandler(Button_Click);
+                    button.MouseDown += new MouseEventHandler(Button_MouseDown);
                     this.Controls.Add(button);
                     buttonArray[i, j] = button;
                 }
             }
         }
 
-        private void Button_Click(object sender, EventArgs e)
+        private void Button_MouseDown(object sender, MouseEventArgs e)
         {
             Button clickedButton = sender as Button;
-            var board = clickedButton.Tag;
-            clickedButton.Text = $"{board}";
+            var (i, j) = ((int, int))clickedButton.Tag;
 
-            if((int)board == 0)
+            if(e.Button == MouseButtons.Left)
             {
-                //Jak kliknę na 0 to mają się wszystkie 0 sąsiadujące "odsłonić"
-            }
-            else if((int)board == -1)
-            {
-                MessageBox.Show("You clicked on bomb! :(");
-            }
+                if (clickedButton.Text == "F")
+                {
+                    return;
+                }
 
-            //Po kliknięciu LPM ma już nie być buttona w tym miejscu tylko sama liczba jeśli jest
+                if (_board[i, j] == -1)
+                {
+                    clickedButton.Text = "BOMB";
+                    MessageBox.Show("Boom! You hit a bomb!");
+                    ResetGame(_buttonArray);
+                }
+                else
+                {
+                    RevealCell(i, j);
+                    CheckForWin();
+                }
+            }
+            else if(e.Button == MouseButtons.Right)
+            {
+                //Flag
+                clickedButton.Text = clickedButton.Text == "F" ? "" : "F";
+            }
         }
 
-        public void SetBombs(int[,] board, int bombQuantity)
+        public void RevealCell(int i, int j)
         {
+            if (i < 0 || i >= _rows || j < 0 || j >= _cols || !_buttonArray[i, j].Enabled)
+            {
+                return;
+            }
+
+            _buttonArray[i, j].Text = _board[i, j] == 0 ? "" : _board[i, j].ToString();
+            _buttonArray[i, j].Enabled = false;
+            _revealedCells++;
+
+            if (_board[i, j] == 0)
+            {
+                for (int k = 0; k < 8; k++)
+                {
+                    int ni = i + _dx[k];
+                    int nj = j + _dy[k];
+                    RevealCell(ni, nj);
+                }
+            }
+        }
+
+        public void CheckForWin()
+        {
+            int totalNonBombCells = _rows * _cols - _numberOfBombs;
+
+            if (_revealedCells == totalNonBombCells)
+            {
+                MessageBox.Show("Congratulations! You've won!");
+                ResetGame(_buttonArray);
+            }
+        }
+
+        public void PlaceBombs(int[,] board, int bombQuantity)
+        {
+            _numberOfBombs = bombQuantity;
             Random random = new Random();
 
             while(bombQuantity > 0)
             {
-                int randomX = random.Next(0, board.GetLength(0) - 1);
-                int randomY = random.Next(0, board.GetLength(1) - 1);
+                int randomX = random.Next(0, _rows - 1);
+                int randomY = random.Next(0, _cols - 1);
 
                 if(board[randomX, randomY] != -1)
                 {
@@ -97,29 +157,29 @@ namespace Minesweeper
             }
         }
 
-        private void ShowBoard(int[,] board)
+        public void DisplayBoard(int[,] board, Button[,] buttonArray)
         {
-            dataGridView.ColumnCount = board.GetLength(1);
-            dataGridView.RowCount = board.GetLength(0);
-
-            for (int i = 0; i < board.GetLength(0); i++)
+            for (int i = 0; i < _rows; i++)
             {
-                for (int j = 0; j < board.GetLength(1); j++)
+                for (int j = 0; j < _cols; j++)
                 {
-                    dataGridView.Rows[i].Cells[j].Value = board[i, j];
+                    if (board[i, j] == -1)
+                    {
+                        buttonArray[i, j].Text = "B";
+                    }
+                    else if (board[i, j] > 0)
+                    {
+                        buttonArray[i, j].Text = board[i, j].ToString();
+                    }
                 }
             }
         }
 
-        public void SetNumbers(int[,] board)
+        public void CalculateAdjacentBombs(int[,] board)
         {
-            //Positions of the eight possible neighbors around any given cell in the grid
-            int[] dx = { -1, -1, -1, 0, 0, 1, 1, 1};
-            int[] dy = { -1, 0, 1, -1, 1, -1, 0, 1};
-
-            for (int i = 0; i < board.GetLength(0); i++)
+            for (int i = 0; i < _rows; i++)
             {
-                for (int j = 0; j < board.GetLength(1); j++)
+                for (int j = 0; j < _cols; j++)
                 {
                     if (board[i, j] == -1)
                     {
@@ -128,14 +188,14 @@ namespace Minesweeper
 
                     int adjacentBombs = 0;
 
-                    for (int k = 0; k < dx.Length; k++) 
+                    for (int k = 0; k < _dx.Length; k++) 
                     {
                         //Checking all 8 neighbors of current cell
-                        int ni = i + dx[k];
-                        int nj = j + dy[k];
+                        int ni = i + _dx[k];
+                        int nj = j + _dy[k];
 
                         //If one of neighbors is bomb then increase the value of the "adjacentBombs"
-                        if (ni >= 0 && ni < board.GetLength(0) && nj >= 0 && nj < board.GetLength(1) && board[ni, nj] == -1)
+                        if (ni >= 0 && ni < _rows && nj >= 0 && nj < _cols && board[ni, nj] == -1)
                         {
                             adjacentBombs++;
                         }
@@ -144,6 +204,25 @@ namespace Minesweeper
                     board[i, j] = adjacentBombs;
                 }
             }
+        }
+
+        public void ResetGame(Button[,] buttonArray)
+        {
+            // Remove all existing buttons
+            for (int i = 0; i < _rows; i++)
+            {
+                for (int j = 0; j < _cols; j++)
+                {
+                    if (buttonArray[i, j] != null)
+                    {
+                        this.Controls.Remove(buttonArray[i, j]);
+                        buttonArray[i, j].Dispose();
+                    }
+                }
+            }
+
+            // Reinitialize the game
+            InitializeGame();
         }
     }
 }
