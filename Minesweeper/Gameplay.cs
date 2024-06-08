@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.AxHost;
 
 namespace Minesweeper
 {  
@@ -23,10 +24,13 @@ namespace Minesweeper
         private Button[,] _buttonArray;
         private int _revealedCells;
         private int _numberOfBombs;
+        private int _numberOfFlags;
 
         //Positions of the eight possible neighbors
         private int[] _dx = { -1, -1, -1, 0, 0, 1, 1, 1 };
         private int[] _dy = { -1, 0, 1, -1, 1, -1, 0, 1 };
+
+        //private Label flagNumberLabel;
 
         public Gameplay()
         {
@@ -40,6 +44,7 @@ namespace Minesweeper
             PlaceBombs(_board, 10);
             CalculateAdjacentBombs(_board);
             CreateButtonArray(_board, _buttonArray);
+            CreateFlagNumberLabel();
             //DisplayBoard(_board, _buttonArray);
             _revealedCells = 0;
         }
@@ -53,8 +58,24 @@ namespace Minesweeper
             _buttonArray = new Button[_rows, _cols];
         }
 
+        private void CreateFlagNumberLabel()
+        {
+            _flagNumberLabel = new Label
+            {
+                Text = _numberOfFlags.ToString(),
+                AutoSize = true,
+                Font = new System.Drawing.Font("Arial", 16),
+                Location = new System.Drawing.Point(225, 10)
+            };
+
+            // Add the label to the form
+            this.Controls.Add(_flagNumberLabel);
+        }
+
         public void CreateButtonArray(int[,] board, Button[,] buttonArray)
         {
+            int startY = _flagNumberLabel.Height + 20;
+
             for (int i = 0; i < _rows; i++)
             {
                 for (int j = 0; j < _cols; j++)
@@ -65,7 +86,7 @@ namespace Minesweeper
                         Height = _buttonHeight,
                         //Text = $"{board[i, j]}",
                         Tag = (i, j),
-                        Location = new System.Drawing.Point(j * (_buttonWidth + _padding), i * (_buttonHeight + _padding))
+                        Location = new System.Drawing.Point(j * (_buttonWidth + _padding), i * (_buttonHeight + _padding) + startY)
                     };
 
                     button.MouseDown += new MouseEventHandler(Button_MouseDown);
@@ -101,9 +122,24 @@ namespace Minesweeper
             }
             else if(e.Button == MouseButtons.Right)
             {
-                //Flag
-                clickedButton.Text = clickedButton.Text == "F" ? "" : "F";
+                if(clickedButton.Text == "F")
+                {
+                    clickedButton.Text = "";
+                    _numberOfFlags++;
+                }
+                else
+                {
+                    clickedButton.Text = "F";
+                    _numberOfFlags--;
+                }
+
+                UpdateFlagNumberLabel();
             }
+        }
+
+        private void UpdateFlagNumberLabel()
+        {
+            _flagNumberLabel.Text = _numberOfFlags.ToString();
         }
 
         public void RevealCell(int i, int j)
@@ -142,6 +178,8 @@ namespace Minesweeper
         public void PlaceBombs(int[,] board, int bombQuantity)
         {
             _numberOfBombs = bombQuantity;
+            _numberOfFlags = _numberOfBombs;
+
             Random random = new Random();
 
             while(bombQuantity > 0)
