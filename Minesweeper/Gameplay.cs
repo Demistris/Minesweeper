@@ -12,134 +12,57 @@ using static System.Windows.Forms.AxHost;
 
 namespace Minesweeper
 {  
-    public partial class Gameplay : Form, IGameplay
+    public partial class Gameplay
     {
-        private const int _buttonWidth = 50;
-        private const int _buttonHeight = 50;
-        private const int _padding = 0;
+        public bool IsTimerStarted { get; set; }
+        public int Rows => _rows;
+        public int Cols => _cols;
+        public int[,] Board => _board;
+        public Button[,] ButtonArray => _buttonArray;
 
+        private MinesweeperUI _minesweeperUI;
         private int[,] _board;
+        private Button[,] _buttonArray;
+
         private int _rows;
         private int _cols;
-        private Button[,] _buttonArray;
         private int _revealedCells;
         private int _numberOfBombs;
-        private int _numberOfFlags;
 
         //Positions of the eight possible neighbors
         private int[] _dx = { -1, -1, -1, 0, 0, 1, 1, 1 };
         private int[] _dy = { -1, 0, 1, -1, 1, -1, 0, 1 };
 
-        //private Label flagNumberLabel;
+        //Timer
+        private bool _isTimerStarted;
 
-        public Gameplay()
+        public Gameplay(MinesweeperUI minesweeperUI)
         {
-            InitializeComponent();
-            InitializeGame();
+            _minesweeperUI = minesweeperUI;
         }
 
-        private void InitializeGame()
+        public void InitializeGame(int rows, int cols, int bombQuantity)
         {
-            InitializeBoard(8, 10);
-            PlaceBombs(_board, 10);
+            InitializeBoard(rows, cols);
+            _minesweeperUI.CreateButtonArray(_board, _buttonArray);
+
+            PlaceBombs(_board, bombQuantity);
             CalculateAdjacentBombs(_board);
-            CreateButtonArray(_board, _buttonArray);
-            CreateFlagNumberLabel();
-            //DisplayBoard(_board, _buttonArray);
+            _minesweeperUI.InitializeTimer();
+            _minesweeperUI.CreateFlagNumberLabel();
+            _minesweeperUI.CreateTimerLabel();
+
             _revealedCells = 0;
+            _isTimerStarted = false;
         }
 
-        public void InitializeBoard(int x, int y)
+        private void InitializeBoard(int x, int y)
         {
             _rows = x;
             _cols = y;
 
             _board = new int[_rows, _cols];
             _buttonArray = new Button[_rows, _cols];
-        }
-
-        private void CreateFlagNumberLabel()
-        {
-            _flagNumberLabel = new Label
-            {
-                Text = _numberOfFlags.ToString(),
-                AutoSize = true,
-                Font = new System.Drawing.Font("Arial", 16),
-                Location = new System.Drawing.Point(225, 10)
-            };
-
-            // Add the label to the form
-            this.Controls.Add(_flagNumberLabel);
-        }
-
-        public void CreateButtonArray(int[,] board, Button[,] buttonArray)
-        {
-            int startY = _flagNumberLabel.Height + 20;
-
-            for (int i = 0; i < _rows; i++)
-            {
-                for (int j = 0; j < _cols; j++)
-                {
-                    Button button = new Button
-                    {
-                        Width = _buttonWidth,
-                        Height = _buttonHeight,
-                        //Text = $"{board[i, j]}",
-                        Tag = (i, j),
-                        Location = new System.Drawing.Point(j * (_buttonWidth + _padding), i * (_buttonHeight + _padding) + startY)
-                    };
-
-                    button.MouseDown += new MouseEventHandler(Button_MouseDown);
-                    this.Controls.Add(button);
-                    buttonArray[i, j] = button;
-                }
-            }
-        }
-
-        private void Button_MouseDown(object sender, MouseEventArgs e)
-        {
-            Button clickedButton = sender as Button;
-            var (i, j) = ((int, int))clickedButton.Tag;
-
-            if(e.Button == MouseButtons.Left)
-            {
-                if (clickedButton.Text == "F")
-                {
-                    return;
-                }
-
-                if (_board[i, j] == -1)
-                {
-                    clickedButton.Text = "BOMB";
-                    MessageBox.Show("Boom! You hit a bomb!");
-                    ResetGame(_buttonArray);
-                }
-                else
-                {
-                    RevealCell(i, j);
-                    CheckForWin();
-                }
-            }
-            else if(e.Button == MouseButtons.Right)
-            {
-                if(clickedButton.Text == "F")
-                {
-                    clickedButton.Text = "";
-                    _numberOfFlags++;
-                }
-                else
-                {
-                    clickedButton.Text = "F";
-                    _numberOfFlags--;
-                }
-
-                UpdateFlagNumberLabel();
-            }
-        }
-
-        private void UpdateFlagNumberLabel()
-        {
-            _flagNumberLabel.Text = _numberOfFlags.ToString();
         }
 
         public void RevealCell(int i, int j)
@@ -170,15 +93,14 @@ namespace Minesweeper
 
             if (_revealedCells == totalNonBombCells)
             {
-                MessageBox.Show("Congratulations! You've won!");
-                ResetGame(_buttonArray);
+                EndGame("Congratulations! You've won!");
             }
         }
 
-        public void PlaceBombs(int[,] board, int bombQuantity)
+        private void PlaceBombs(int[,] board, int bombQuantity)
         {
             _numberOfBombs = bombQuantity;
-            _numberOfFlags = _numberOfBombs;
+            _minesweeperUI.NumberOfFlags = _numberOfBombs;
 
             Random random = new Random();
 
@@ -195,25 +117,25 @@ namespace Minesweeper
             }
         }
 
-        public void DisplayBoard(int[,] board, Button[,] buttonArray)
-        {
-            for (int i = 0; i < _rows; i++)
-            {
-                for (int j = 0; j < _cols; j++)
-                {
-                    if (board[i, j] == -1)
-                    {
-                        buttonArray[i, j].Text = "B";
-                    }
-                    else if (board[i, j] > 0)
-                    {
-                        buttonArray[i, j].Text = board[i, j].ToString();
-                    }
-                }
-            }
-        }
+        //public void DisplayBoard(int[,] board, Button[,] buttonArray)
+        //{
+        //    for (int i = 0; i < _rows; i++)
+        //    {
+        //        for (int j = 0; j < _cols; j++)
+        //        {
+        //            if (board[i, j] == -1)
+        //            {
+        //                buttonArray[i, j].Text = "B";
+        //            }
+        //            else if (board[i, j] > 0)
+        //            {
+        //                buttonArray[i, j].Text = board[i, j].ToString();
+        //            }
+        //        }
+        //    }
+        //}
 
-        public void CalculateAdjacentBombs(int[,] board)
+        private void CalculateAdjacentBombs(int[,] board)
         {
             for (int i = 0; i < _rows; i++)
             {
@@ -244,7 +166,14 @@ namespace Minesweeper
             }
         }
 
-        public void ResetGame(Button[,] buttonArray)
+        public void EndGame(string message)
+        {
+            _minesweeperUI.GameTimer.Stop();
+            MessageBox.Show(message);
+            ResetGame(_buttonArray);
+        }
+
+        private void ResetGame(Button[,] buttonArray)
         {
             // Remove all existing buttons
             for (int i = 0; i < _rows; i++)
@@ -253,14 +182,21 @@ namespace Minesweeper
                 {
                     if (buttonArray[i, j] != null)
                     {
-                        this.Controls.Remove(buttonArray[i, j]);
+                        _minesweeperUI.Controls.Remove(buttonArray[i, j]);
                         buttonArray[i, j].Dispose();
                     }
                 }
             }
 
+            //Reset timer
+            _minesweeperUI.ElapsedTime = 0;
+            _minesweeperUI.TimerLabel.Text = "Time: 0 sec";
+            _isTimerStarted = false;
+
             // Reinitialize the game
-            InitializeGame();
+            _minesweeperUI.Controls.Clear();
+            _minesweeperUI.InitializeUI();
+            _minesweeperUI.CreateDifficultyButtons();
         }
     }
 }
