@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -25,9 +26,9 @@ namespace Minesweeper
         private Button _hardButton;
 
         //Board buttons
-        private const int _buttonWidth = 50;
-        private const int _buttonHeight = 50;
-        private const int _padding = 0;
+        private int _buttonWidth = 50;
+        private int _buttonHeight = 50;
+        private int _padding = 0;
 
         //Labels
         private Label _flagNumberLabel;
@@ -50,7 +51,7 @@ namespace Minesweeper
             CreateDifficultyButtons();
         }
 
-        public void CreateButtonArray(int[,] board, Button[,] buttonArray)
+        public void CreateButtonArray(Button[,] buttonArray)
         {
             int startY = _flagNumberLabel.Height + 20;
 
@@ -62,7 +63,6 @@ namespace Minesweeper
                     {
                         Width = _buttonWidth,
                         Height = _buttonHeight,
-                        //Text = $"{board[i, j]}",
                         Tag = (i, j),
                         Location = new System.Drawing.Point(j * (_buttonWidth + _padding), i * (_buttonHeight + _padding) + startY)
                     };
@@ -156,16 +156,41 @@ namespace Minesweeper
         private void EasyButton_Click(object sender, EventArgs e)
         {
             _gameplay.InitializeGame(8, 10, 10);
+            this.ClientSize = new Size(500, 450);
+            SetButtonSize(50, 50, 0);
+            HideDifficultyButtons();
         }
 
         private void MediumButton_Click(object sender, EventArgs e)
         {
             _gameplay.InitializeGame(14, 18, 40);
+            this.ClientSize = new Size(900, 750);
+            SetButtonSize(50, 50, 0);
+            HideDifficultyButtons();
         }
 
         private void HardButton_Click(object sender, EventArgs e)
         {
             _gameplay.InitializeGame(20, 24, 99);
+            this.ClientSize = new Size(975, 850);
+            SetButtonSize(40, 40, 0);
+            HideDifficultyButtons();
+        }
+
+        private void HideDifficultyButtons()
+        {
+            _easyButton.Visible = false;
+            _mediumButton.Visible = false;
+            _hardButton.Visible = false;
+        }
+
+        private void SetButtonSize(int width, int height, int padding)
+        {
+            _buttonWidth = width;
+            _buttonHeight = height;
+            _padding = padding;
+
+            CreateButtonArray(_gameplay.ButtonArray);
         }
 
         public void InitializeTimer()
@@ -203,7 +228,7 @@ namespace Minesweeper
                 Text = "Time: 0 sec",
                 AutoSize = true,
                 Font = new System.Drawing.Font("Arial", 16),
-                Location = new System.Drawing.Point(100, 10) // Adjust location as needed
+                Location = new System.Drawing.Point(100, 10)
             };
 
             // Add the label to the form

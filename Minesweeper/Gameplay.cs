@@ -33,9 +33,6 @@ namespace Minesweeper
         private int[] _dx = { -1, -1, -1, 0, 0, 1, 1, 1 };
         private int[] _dy = { -1, 0, 1, -1, 1, -1, 0, 1 };
 
-        //Timer
-        private bool _isTimerStarted;
-
         public Gameplay(MinesweeperUI minesweeperUI)
         {
             _minesweeperUI = minesweeperUI;
@@ -44,8 +41,6 @@ namespace Minesweeper
         public void InitializeGame(int rows, int cols, int bombQuantity)
         {
             InitializeBoard(rows, cols);
-            _minesweeperUI.CreateButtonArray(_board, _buttonArray);
-
             PlaceBombs(_board, bombQuantity);
             CalculateAdjacentBombs(_board);
             _minesweeperUI.InitializeTimer();
@@ -53,7 +48,7 @@ namespace Minesweeper
             _minesweeperUI.CreateTimerLabel();
 
             _revealedCells = 0;
-            _isTimerStarted = false;
+            IsTimerStarted = false;
         }
 
         private void InitializeBoard(int x, int y)
@@ -191,12 +186,11 @@ namespace Minesweeper
             //Reset timer
             _minesweeperUI.ElapsedTime = 0;
             _minesweeperUI.TimerLabel.Text = "Time: 0 sec";
-            _isTimerStarted = false;
+            IsTimerStarted = false;
 
             // Reinitialize the game
             _minesweeperUI.Controls.Clear();
             _minesweeperUI.InitializeUI();
-            _minesweeperUI.CreateDifficultyButtons();
         }
     }
 }
